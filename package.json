@@ -1,0 +1,51 @@
+{
+  "name": "tears",
+  "version": "1.0.0",
+  "description": "A sad game for happy people who also like space",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "lint": "eslint ./src",
+    "build:watch": "webpack --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Petroochio/tears.git"
+  },
+  "author": "petroochio",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Petroochio/tears/issues"
+  },
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "browsers": [
+              "Firefox > 50"
+            ]
+          }
+        }
+      ]
+    ]
+  },
+  "homepage": "https://github.com/Petroochio/tears#readme",
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "ramda": "^0.25.0",
+    "three": "^0.88.0",
+    "webpack": "^3.8.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^8.0.2",
+    "eslint": "^4.11.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0"
+  }
+}
