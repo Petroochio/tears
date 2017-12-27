@@ -40,7 +40,8 @@
     "babel-preset-stage-0": "^6.24.1",
     "ramda": "^0.25.0",
     "three": "^0.88.0",
-    "webpack": "^3.8.1"
+    "webpack": "^3.8.1",
+    "xstream": "^11.1.0"
   },
   "devDependencies": {
     "babel-eslint": "^8.0.2",
