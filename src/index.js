@@ -2,6 +2,7 @@ import xs from 'xstream';
 import * as THREE from 'three';
 import { add, zipWith } from 'ramda';
 
+// Try doing renderer scissor
 const cam = new THREE.PerspectiveCamera(70, 400 / 400, 1, 1000);
 cam.position.z = 10;
 const renderer1 = new THREE.WebGLRenderer();
