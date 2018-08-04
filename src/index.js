@@ -3,61 +3,49 @@ import xs from 'xstream';
 import { add, zipWith } from 'ramda';
 import REGL from 'regl';
 import mat4 from 'gl-mat4';
+import vec3 from 'gl-vec3';
 
 import CubeMesh from './CubeMesh';
+import { intersectTriangle } from './Raycast';
 
-// Try doing renderer scissor
+// WTF IS THIS SHIT
+const viewMatrix = new Float32Array([
+  1, -0, 0, 0,
+  0, 0.876966655254364, 0.48055124282836914, 0,
+  -0, -0.48055124282836914, 0.876966655254364, 0,
+  0, 0, -11.622776985168457, 1,
+]);
+const projectionMatrix = new Float32Array(16);
+
+function createModelMatrix(props) {
+  const m = mat4.identity([]);
+
+  mat4.translate(m, m, props.translate);
+
+  const s = props.scale;
+  mat4.scale(m, m, [s, s, s]);
+
+  return m;
+}
+
+// Do we wanna add cycle? YES!!!! Do it tomorrow once you have raycasting going
 function main() {
   const panel1 = document.querySelector('#panel-1');
   const panel2 = document.querySelector('#panel-2');
   // const panel3 = document.querySelector('#panel-3');
 
-  const reglFrame1 = REGL(panel1);
+  // This will get weird with a vdom
+  const regl = REGL(panel1);
 
-  const draw = reglFrame1({
-    frag: `
-      precision mediump float;
-      uniform vec2 resolution;
-
-      vec3 colorA = vec3(1, 0.0, 1);
-      vec3 colorB = vec3(1, 1, 1);
-
-      void main() {
-        vec2 st = gl_FragCoord.xy/resolution.xy;
-        vec3 color = vec3(0.0);
-        color = mix(colorA, colorB, vec3(st.x));
-        gl_FragColor = vec4(color, 1);
-      }`,
-
-    vert: `
-      precision mediump float;
-      attribute vec3 position;
-      uniform mat4 model, view, projection;
-      void main() {
-        gl_Position = projection * view * model * vec4(position, 1);
-      }`,
-
-    attributes: {
-      position: CubeMesh.position,
-    },
-    elements: CubeMesh.elements,
-
+  // WTF IS THIS SHIT
+  // keeps track of all global state.
+  const globalScope = regl({
     uniforms: {
-      // the batchId parameter gives the index of the command
-      resolution: ({ viewportWidth, viewportHeight }) => [viewportWidth, viewportHeight],
-      model: mat4.identity([]),
-      view: ({ tick }) => {
-        const t = 0.01 * tick;
-        return mat4.lookAt(
-          [],
-          [3 * Math.cos(t), Math.tan(t), 3 * Math.sin(t)],
-          [0, 0, 0],
-          [0, 1, 0]
-        );
-      },
+      lightDir: [0.39, 0.87, 0.29],
+      view: () => viewMatrix,
       projection: ({ viewportWidth, viewportHeight }) =>
         mat4.perspective(
-          [],
+          projectionMatrix,
           Math.PI / 4,
           viewportWidth / viewportHeight,
           0.01,
@@ -66,14 +54,119 @@ function main() {
     },
   });
 
+  const drawSimple = regl({
+    frag: `
+      precision mediump float;
+      varying vec3 vNormal;
+      varying vec3 vPosition;
+      uniform float ambientLightAmount;
+      uniform float diffuseLightAmount;
+      uniform vec3 color;
+      uniform vec3 lightDir;
+      void main () {
+        vec3 ambient = ambientLightAmount * color;
+        float cosTheta = dot(vNormal, lightDir);
+        vec3 diffuse = diffuseLightAmount * color * clamp(cosTheta , 0.0, 1.0 );
+        gl_FragColor = vec4((ambient + diffuse), 1.0);
+    }`,
+
+    vert: `
+      precision mediump float;
+      attribute vec3 position;
+      attribute vec3 normal;
+      varying vec3 vPosition;
+      varying vec3 vNormal;
+      uniform mat4 projection, view, model;
+      void main() {
+        vec4 worldSpacePosition = model * vec4(position, 1);
+        vPosition = worldSpacePosition.xyz;
+        vNormal = normal;
+        gl_Position = projection * view * worldSpacePosition;
+    }`,
+  });
+
+  const drawModel = regl({
+    uniforms: {
+      model: (_, props, batchId) => createModelMatrix(props),
+      ambientLightAmount: 0.3,
+      diffuseLightAmount: 0.7,
+      color: regl.prop('color'),
+      isRound: false,
+    },
+    attributes: {
+      position: CubeMesh.position,
+      normal: CubeMesh.normal,
+    },
+    elements: CubeMesh.elements,
+    cull: {
+      enable: true,
+    },
+  });
+
+  let cubeHit = false;
+  // Raycast shit
+  panel1.addEventListener('mousemove', (e) => {
+    const vp = mat4.multiply([], projectionMatrix, viewMatrix);
+    const invVp = mat4.invert([], vp);
+
+    // get a single point on the camera ray.
+    // using temp shit here
+    const rayPoint = vec3.transformMat4(
+      [],
+      [2.0 * e.offsetX / 400 - 1.0, -2.0 * e.offsetY / 400 + 1.0, 0.0],
+      invVp
+    );
+
+    // get the position of the camera.
+    const rayOrigin = vec3.transformMat4([], [0, 0, 0], mat4.invert([], viewMatrix));
+
+    const rayDir = vec3.normalize([], vec3.subtract([], rayPoint, rayOrigin));
+
+    // now we iterate through all meshes, and find the closest mesh that intersects the camera ray.
+    const meshData = { scale: 2.0, translate: [0.0, 0.0, 0.0] };
+
+    const modelMatrix = createModelMatrix(meshData);
+
+    cubeHit = false;
+    // we must check all triangles of the mesh.
+    CubeMesh.elements.forEach((face) => {
+      // This applies translation and scale to the mesh so raycast cna calc properly
+      const tri = [
+        vec3.transformMat4([], CubeMesh.position[face[0]], modelMatrix),
+        vec3.transformMat4([], CubeMesh.position[face[1]], modelMatrix),
+        vec3.transformMat4([], CubeMesh.position[face[2]], modelMatrix),
+      ];
+
+      const res = [];
+      // returns distance if hit
+      const t = intersectTriangle(res, rayPoint, rayDir, tri);
+
+      // gross
+      if (t !== null) cubeHit = true;
+      // if (t !== null) {
+      //   if (t < minT) {
+      //     // mesh was closer than any object thus far.
+      //     // for the time being, make it the selected object.
+      //     minT = t
+      //     iSelectedMesh = i
+      //   }
+      // }
+    });
+  });
+
   // draw();
-  reglFrame1.frame(() => {
-    reglFrame1.clear({
+  regl.frame(() => {
+    regl.clear({
       depth: 1,
       color: [0, 0, 0, 1],
     });
 
-    draw();
+    const cubeColor = cubeHit ? [0.6, 0.0, 0.0] : [0.0, 0.0, 0.6];
+    globalScope(() => {
+      drawSimple(() => {
+        drawModel({ scale: 2.0, translate: [0.0, 0.0, 0.0], color: cubeColor });
+      });
+    });
   });
 }
 
@@ -85,22 +178,4 @@ function DomEventProducer(eventName, element) {
     stop: () => false,
   };
   return producer;
-}
-
-function setRotControls(angle, panel, entity) {
-  const mouseDown$ = xs.create(DomEventProducer('mousedown', panel));
-  const mouseUp$ = xs.create(DomEventProducer('mouseup', panel));
-  const mouseOut$ = xs.create(DomEventProducer('mouseout', panel));
-  const mouseMove$ = xs.create(DomEventProducer('mousemove', panel));
-
-  const rot$ = xs.combine(
-    xs.merge(mouseDown$.mapTo(true), xs.merge(mouseUp$, mouseOut$).mapTo(false)),
-    mouseMove$
-  )
-    .filter(([isDown]) => isDown)
-    .mapTo(angle)
-    .fold(zipWith(add), [0, 0, 0]);
-    // .subscribe({
-    //   next: ([x, y, z]) => { entity.rotation.set(x, y, z); render(); },
-    // });
 }

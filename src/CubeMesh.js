@@ -1,3 +1,56 @@
+// Hold my code while I set up raycasting
+// const drawCube = regl({
+//   frag: `
+//     precision mediump float;
+//     uniform vec2 resolution;
+
+//     vec3 colorA = vec3(1, 0.0, 1);
+//     vec3 colorB = vec3(1, 1, 1);
+
+//     void main() {
+//       vec2 st = gl_FragCoord.xy/resolution.xy;
+//       vec3 color = vec3(0.0);
+//       color = mix(colorA, colorB, vec3(st.x));
+//       gl_FragColor = vec4(color, 1);
+//     }`,
+
+//   vert: `
+//     precision mediump float;
+//     attribute vec3 position;
+//     uniform mat4 model, view, projection;
+//     void main() {
+//       gl_Position = projection * view * model * vec4(position, 1);
+//     }`,
+
+//   attributes: {
+//     position: CubeMesh.position,
+//   },
+//   elements: CubeMesh.elements,
+
+//   uniforms: {
+//     // the batchId parameter gives the index of the command
+//     resolution: ({ viewportWidth, viewportHeight }) => [viewportWidth, viewportHeight],
+//     model: mat4.identity([]),
+//     view: ({ tick }) => {
+//       const t = 0.01 * tick;
+//       return mat4.lookAt(
+//         [],
+//         [3 * Math.cos(t), 0, 3 * Math.sin(t)],
+//         [0, 0, 0],
+//         [0, 1, 0]
+//       );
+//     },
+//     projection: ({ viewportWidth, viewportHeight }) =>
+//       mat4.perspective(
+//         [],
+//         Math.PI / 4,
+//         viewportWidth / viewportHeight,
+//         0.01,
+//         1000
+//       ),
+//   },
+// });
+
 const position = [
   [-0.5, +0.5, +0.5], [+0.5, +0.5, +0.5], [+0.5, -0.5, +0.5], [-0.5, -0.5, +0.5], // positive z face
   [+0.5, +0.5, +0.5], [+0.5, +0.5, -0.5], [+0.5, -0.5, -0.5], [+0.5, -0.5, +0.5], // positive x face
@@ -7,13 +60,15 @@ const position = [
   [-0.5, -0.5, -0.5], [+0.5, -0.5, -0.5], [+0.5, -0.5, +0.5], [-0.5, -0.5, +0.5], // bottom face
 ];
 
-const uv = [
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // positive z face.
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // positive x face.
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // negative z face.
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // negative x face.
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // top face
-  [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], // bottom face
+const normal = [
+  [0.0, 0.0, +1.0], [0.0, 0.0, +1.0], [0.0, 0.0, +1.0], [0.0, 0.0, +1.0],
+  [+1.0, 0.0, 0.0], [+1.0, 0.0, 0.0], [+1.0, 0.0, 0.0], [+1.0, 0.0, 0.0],
+  [0.0, 0.0, -1.0], [0.0, 0.0, -1.0], [0.0, 0.0, -1.0], [0.0, 0.0, -1.0],
+  [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0],
+  // top
+  [0.0, +1.0, 0.0], [0.0, +1.0, 0.0], [0.0, +1.0, 0.0], [0.0, +1.0, 0.0],
+  // bottom
+  [0.0, -1.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 0.0], [0.0, -1.0, 0.0],
 ];
 
 const elements = [
@@ -27,8 +82,8 @@ const elements = [
 
 const cube = {
   position,
-  uv,
   elements,
+  normal,
 };
 
 export default cube;
