@@ -1,12 +1,9 @@
 import xs from 'xstream';
-// import * as THREE from 'three';
-import { add, zipWith } from 'ramda';
 import REGL from 'regl';
 import mat4 from 'gl-mat4';
-import vec3 from 'gl-vec3';
 
 import CubeMesh from './CubeMesh';
-import { intersectTriangle } from './Raycast';
+import { getRayHits } from './Raycast';
 
 // WTF IS THIS SHIT
 const viewMatrix = new Float32Array([
@@ -103,55 +100,25 @@ function main() {
     },
   });
 
+  // !!!
   let cubeHit = false;
+
   // Raycast shit
   panel1.addEventListener('mousemove', (e) => {
-    const vp = mat4.multiply([], projectionMatrix, viewMatrix);
-    const invVp = mat4.invert([], vp);
-
-    // get a single point on the camera ray.
-    // using temp shit here
-    const rayPoint = vec3.transformMat4(
-      [],
-      [2.0 * e.offsetX / 400 - 1.0, -2.0 * e.offsetY / 400 + 1.0, 0.0],
-      invVp
-    );
-
-    // get the position of the camera.
-    const rayOrigin = vec3.transformMat4([], [0, 0, 0], mat4.invert([], viewMatrix));
-
-    const rayDir = vec3.normalize([], vec3.subtract([], rayPoint, rayOrigin));
-
-    // now we iterate through all meshes, and find the closest mesh that intersects the camera ray.
+    // Generate this somewhere else plx
+    // Cycle would be nice :3
     const meshData = { scale: 2.0, translate: [0.0, 0.0, 0.0] };
 
-    const modelMatrix = createModelMatrix(meshData);
+    const meshMatrix = createModelMatrix(meshData);
+    const targets = [{ mesh: CubeMesh, meshMatrix }];
+    const screenX = e.offsetX / 400; // Get actual div size
+    const screenY = e.offsetY / 400; // Get actual div size
 
-    cubeHit = false;
-    // we must check all triangles of the mesh.
-    CubeMesh.elements.forEach((face) => {
-      // This applies translation and scale to the mesh so raycast cna calc properly
-      const tri = [
-        vec3.transformMat4([], CubeMesh.position[face[0]], modelMatrix),
-        vec3.transformMat4([], CubeMesh.position[face[1]], modelMatrix),
-        vec3.transformMat4([], CubeMesh.position[face[2]], modelMatrix),
-      ];
-
-      const res = [];
-      // returns distance if hit
-      const t = intersectTriangle(res, rayPoint, rayDir, tri);
-
-      // gross
-      if (t !== null) cubeHit = true;
-      // if (t !== null) {
-      //   if (t < minT) {
-      //     // mesh was closer than any object thus far.
-      //     // for the time being, make it the selected object.
-      //     minT = t
-      //     iSelectedMesh = i
-      //   }
-      // }
-    });
+    if (getRayHits(targets, projectionMatrix, viewMatrix, screenX, screenY)[0] < 10000) {
+      cubeHit = true;
+    } else {
+      cubeHit = false;
+    }
   });
 
   // draw();
