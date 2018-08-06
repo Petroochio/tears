@@ -2,8 +2,10 @@ import xs from 'xstream';
 import REGL from 'regl';
 import mat4 from 'gl-mat4';
 
-import CubeMesh from './CubeMesh';
+import MeshGenerators from './MeshGenerators';
 import { getRayHits } from './Raycast';
+
+const cubeMesh = MeshGenerators.primitives.createCube();
 
 // WTF IS THIS SHIT
 const viewMatrix = new Float32Array([
@@ -91,10 +93,10 @@ function main() {
       isRound: false,
     },
     attributes: {
-      position: CubeMesh.position,
-      normal: CubeMesh.normal,
+      position: cubeMesh.position,
+      normal: cubeMesh.normal,
     },
-    elements: CubeMesh.elements,
+    elements: cubeMesh.elements,
     cull: {
       enable: true,
     },
@@ -110,7 +112,7 @@ function main() {
     const meshData = { scale: 2.0, translate: [0.0, 0.0, 0.0] };
 
     const meshMatrix = createModelMatrix(meshData);
-    const targets = [{ mesh: CubeMesh, meshMatrix }];
+    const targets = [{ mesh: cubeMesh, meshMatrix }];
     const screenX = e.offsetX / 400; // Get actual div size
     const screenY = e.offsetY / 400; // Get actual div size
 
