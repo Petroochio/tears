@@ -2,7 +2,7 @@ import { curry } from 'ramda';
 import vec3 from 'gl-vec3';
 import mat4 from 'gl-mat4';
 
-const MAX_DIST = 10000;
+const MAX_DIST = Infinity;
 
 // This is copy pasta
 // Probs want to refactor to my taste
@@ -38,15 +38,15 @@ export function intersectTriangle(pt, dir, tri) {
 }
 
 function getRayDistance(rayPoint, rayDirection, target) {
-  const { mesh, meshMatrix } = target;
+  const { geometry, meshMatrix } = target;
 
   // We must check all triangles of the mesh.
-  return mesh.elements.reduce((dist, face) => {
+  return geometry.elements.reduce((dist, face) => {
     // This applies translation and scale to the mesh so raycast cna calc properly
     const tri = [
-      vec3.transformMat4([], mesh.position[face[0]], meshMatrix),
-      vec3.transformMat4([], mesh.position[face[1]], meshMatrix),
-      vec3.transformMat4([], mesh.position[face[2]], meshMatrix),
+      vec3.transformMat4([], geometry.position[face[0]], meshMatrix),
+      vec3.transformMat4([], geometry.position[face[1]], meshMatrix),
+      vec3.transformMat4([], geometry.position[face[2]], meshMatrix),
     ];
 
     // returns distance if hit
@@ -62,7 +62,7 @@ function getRayDistance(rayPoint, rayDirection, target) {
 }
 
 /**
- * Returns of mirrored objects that show distance from ray. -1 means no hit
+ * Returns of mirrored objects that show distance from ray. 10000 means no hit
  *
  * @param {array[model]} targets : array of targets with model information
  * @param {mat4} projectionMatrix
