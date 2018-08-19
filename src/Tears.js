@@ -82,7 +82,6 @@ function makeModelDraw(reglCtx) {
 }
 
 function initializeGlobalState(reglCtx) {
-  // WTF IS THIS SHIT
   // keeps track of all global state.
   return reglCtx({
     uniforms: {
@@ -120,12 +119,11 @@ function main(sources) {
     position: [0.0, 0.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
     // do this right
-    meshMatrix: createTransformMatrix([0.0, 0.0, 0.0], [0.0, 0.0, 0.0]),
+    meshMatrix: createTransformMatrix([0.0, 0.0, 0.0], [2, 2, 2]),
   }]);
 
   const state$ = cubeHits$.compose(sampleCombine(meshes$))
-    .map(([ray, meshes]) => getRayHits(meshes, ray.proj, viewMat, ray.x, ray.y))
-    .debug();
+    .map(([ray, meshes]) => getRayHits(meshes, ray.proj, viewMat, ray.x, ray.y));
 
   const regl$ = DOM.select('#panel-1').elements().map(([e]) => REGL(e));
 
@@ -141,10 +139,11 @@ function main(sources) {
           depth: 1,
           color: [0, 0, 0, 1],
         });
-        const cubeColor = [0.6, 0.0, 0.0]; // cubeHit ?  : [0.0, 0.0, 0.6];
+        const cubeColor = state[0] < Infinity ? [0.6, 0.0, 0.0] : [0.0, 0.0, 0.6];
+
         globalScope(() => {
           drawSimple(() => {
-            drawModel({ scale: 2.0, translate: [0.0, 0.0, 0.0], color: cubeColor });
+            drawModel({ scale: [2.0, 2.0, 2.0], translate: [0.0, 0.0, 0.0], color: cubeColor });
           });
         });
       };

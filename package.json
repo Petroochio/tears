@@ -35,6 +35,7 @@
   "homepage": "https://github.com/Petroochio/tears#readme",
   "dependencies": {
     "@cycle/dom": "^20.4.0",
+    "@cycle/isolate": "^3.4.0",
     "@cycle/run": "^4.4.0",
     "@cycle/time": "^0.15.0",
     "babel-core": "^6.26.3",
