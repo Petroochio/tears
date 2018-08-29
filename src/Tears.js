@@ -1,15 +1,21 @@
 import xs from 'xstream';
 import sampleCombine from 'xstream/extra/sampleCombine';
 import { div, canvas } from '@cycle/dom';
+import isolate from '@cycle/isolate';
 import REGL from 'regl';
 import mat4 from 'gl-mat4';
-import { nth } from 'ramda';
+import { nth, prop } from 'ramda';
 
-import MeshGenerators from './MeshGenerators';
+import ReglScene from './Components/ReglScene';
+import Geometries from './Geometries';
 import Raycast, { getRayHits } from './Utils/Raycast';
 import { createTransformMatrix } from './Utils/MatrixHelpers';
+import { createRenderState, createMeshDraw, createSimpleDraw } from './Utils/DrawHelpers';
 
-const cubeMesh = MeshGenerators.primitives.createCube();
+import page1 from './Pages/TempPage';
+import { propsModule } from '../node_modules/snabbdom/modules/props';
+
+const cubeMesh = Geometries.primitives.createCube();
 
 // WTF IS THIS SHIT
 const viewMat = new Float32Array([
@@ -20,81 +26,23 @@ const viewMat = new Float32Array([
 ]);
 const projMat = new Float32Array(16);
 
-function view() {
-  return xs.of(div('#current-page', [
+function view(children$) {
+  return children$.map(children => div('#current-page', [
     // set these values from json anyway
     canvas('#panel-1', { attrs: { width: 400, height: 400 } }),
-    canvas('#panel-2'),
+    children,
   ]));
-}
-
-function makeSimpleDraw(reglCtx) {
-  return reglCtx({
-    frag: `
-      precision mediump float;
-      varying vec3 vNormal;
-      varying vec3 vPosition;
-      uniform float ambientLightAmount;
-      uniform float diffuseLightAmount;
-      uniform vec3 color;
-      uniform vec3 lightDir;
-      void main () {
-        vec3 ambient = ambientLightAmount * color;
-        float cosTheta = dot(vNormal, lightDir);
-        vec3 diffuse = diffuseLightAmount * color * clamp(cosTheta , 0.0, 1.0 );
-        gl_FragColor = vec4((ambient + diffuse), 1.0);
-    }`,
-
-    vert: `
-      precision mediump float;
-      attribute vec3 position;
-      attribute vec3 normal;
-      varying vec3 vPosition;
-      varying vec3 vNormal;
-      uniform mat4 projection, view, model;
-      void main() {
-        vec4 worldSpacePosition = model * vec4(position, 1);
-        vPosition = worldSpacePosition.xyz;
-        vNormal = normal;
-        gl_Position = projection * view * worldSpacePosition;
-    }`,
-  });
-}
-
-function makeModelDraw(reglCtx) {
-  return reglCtx({
-    uniforms: {
-      model: (_, props) => createTransformMatrix(props.translate, props.scale),
-      ambientLightAmount: 0.3,
-      diffuseLightAmount: 0.7,
-      color: reglCtx.prop('color'),
-      isRound: false,
-    },
-    attributes: {
-      position: cubeMesh.position,
-      normal: cubeMesh.normal,
-    },
-    elements: cubeMesh.elements,
-    cull: {
-      enable: true,
-    },
-  });
-}
-
-function initializeGlobalState(reglCtx) {
-  // keeps track of all global state.
-  return reglCtx({
-    uniforms: {
-      lightDir: [0.39, 0.87, 0.29],
-      view: () => viewMat,
-      projection: projMat,
-    },
-  });
 }
 
 function main(sources) {
   const { DOM, Time } = sources;
   const frame$ = Time.animationFrames();
+
+  // Just testing the json for now
+  const scene1$ = xs.of(page1.scenes[1])
+    .map(sceneProps => isolate(ReglScene)({ DOM, frame$, props: sceneProps }));
+
+  const scene1Dom$ = scene1$.map(prop('DOM')).flatten();
 
   const cubeHits$ = DOM
     .select('#panel-1')
@@ -125,13 +73,16 @@ function main(sources) {
   const state$ = cubeHits$.compose(sampleCombine(meshes$))
     .map(([ray, meshes]) => getRayHits(meshes, ray.proj, viewMat, ray.x, ray.y));
 
+  // Create a reusable regl context
   const regl$ = DOM.select('#panel-1').elements().map(([e]) => REGL(e));
 
   const render$ = state$.compose(sampleCombine(regl$))
     .map(([state, regl]) => {
-      const globalScope = initializeGlobalState(regl);
-      const drawSimple = makeSimpleDraw(regl);
-      const drawModel = makeModelDraw(regl);
+      // these could probably be created in another stream to be combined with
+      // the state so the functions don't need to change
+      const globalScope = createRenderState(regl, viewMat, projMat);
+      const drawSimple = createSimpleDraw(regl);
+      const drawMesh = createMeshDraw(regl);
 
       // have this function accept some game params that can change camera and shit
       return () => {
@@ -139,34 +90,36 @@ function main(sources) {
           depth: 1,
           color: [0, 0, 0, 1],
         });
-        const cubeColor = state[0] < Infinity ? [0.6, 0.0, 0.0] : [0.0, 0.0, 0.6];
+        const cubeColor = state[0] < Infinity ? [0.0, 0.0, 0.6] : [0.6, 0.0, 0.0];
 
         globalScope(() => {
+          // Why do they go in this order
+          // I guess it just sets the shaders -.-
           drawSimple(() => {
-            drawModel({ scale: [2.0, 2.0, 2.0], translate: [0.0, 0.0, 0.0], color: cubeColor });
+            // the params here kind equal props I think?
+            drawMesh({
+              scale: [2.0, 2.0, 2.0],
+              translate: [0.0, 0.0, 0.0],
+              color: cubeColor,
+              mesh: cubeMesh,
+            });
           });
         });
       };
     });
 
   // Render stream, find a better place for this
+  // create an initial state so this renders properly
   frame$.compose(sampleCombine(render$))
     .subscribe({
       next: ([_, render]) => {
         render();
-        // console.log(render);
-      },
-      error: (err) => {
-        console.error('The Stream gave me an error: ', err);
-      },
-      complete: () => {
-        console.log('The Stream told me it is done.');
       },
     });
 
-
   const sinks = {
-    DOM: view().debug(),
+    // pass the children into the view
+    DOM: view(scene1Dom$),
   };
   return sinks;
 }
