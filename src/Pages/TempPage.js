@@ -44,6 +44,23 @@ export default {
           rotation: [0, 0, 0],
           scale: [2, 2, 2],
         },
+
+        {
+          // I wonder if there is a better way to do this?
+          geometry: {
+            category: 'PRIMITIVE',
+            type: 'CUBE',
+            params: [],
+          },
+          // This will get messy quick
+          interaction: {
+            type: 'HOVER-COLOR',
+            color: [[0.6, 0, 0], [0, 0, 0.6]],
+          },
+          position: [2, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+        },
       ],
     },
   ],

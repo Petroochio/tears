@@ -3,12 +3,11 @@ import sampleCombine from 'xstream/extra/sampleCombine';
 import { canvas } from '@cycle/dom';
 import REGL from 'regl';
 import { prop, map } from 'ramda';
+import mat4 from 'gl-mat4';
 
-import Geometries, { getGeometry } from '../Geometries';
+import { getGeometry } from '../Geometries';
 import { createTransformMatrix } from '../Utils/MatrixHelpers';
 import { createRenderState, createMeshDraw, createSimpleDraw } from '../Utils/DrawHelpers';
-
-const cubeMesh = Geometries.primitives.createCube();
 
 // This should be configured in the children somehow
 const viewMat = new Float32Array([
@@ -18,6 +17,15 @@ const viewMat = new Float32Array([
   0, 0, -11.622776985168457, 1,
 ]);
 const projMat = new Float32Array(16);
+
+// I think my projection mat was effed up
+mat4.perspective(
+  projMat,
+  Math.PI / 4,
+  400 / 400,
+  0.01,
+  1000
+);
 
 function processMesh(props) {
   return {
@@ -44,7 +52,7 @@ function ReglScene(sources) {
   const regl$ = DOM.select('.scene').elements().map(([e]) => REGL(e));
 
   // Combine meshes$ with state$?
-  const render$ = meshes$.compose(sampleCombine(regl$)).debug()
+  const render$ = meshes$.compose(sampleCombine(regl$))
     .map(([meshes, regl]) => {
       // these could probably be created in another stream to be combined with
       // the state so the functions don't need to change
@@ -59,37 +67,25 @@ function ReglScene(sources) {
           depth: 1,
           color: [0, 0, 0, 1],
         });
-        const cubeColor = [1, 1, 1];
-        globalScope(() => {
-          // Why do they go in this order
-          // I guess it just sets the shaders -.-
-          drawSimple(() => {
-            // the params here kind equal props I think?
-            drawMesh({
-              mesh: cubeMesh,
-              scale: [2.0, 2.0, 2.0],
-              translate: [0.0, 0.0, 0.0],
-              color: cubeColor,
+        const cubeColor = [0, 0, 0.6];
+
+        // SIDE EFFECTS !!!!!!!!
+        meshes.forEach((mesh) => {
+          globalScope(() => {
+            // Why do they go in this order
+            // I guess it just sets the shaders -.-
+            drawSimple(() => {
+              // the params here kind equal props I think?
+              drawMesh({
+                mesh: mesh.geometry,
+                scale: mesh.scale,
+                rotate: mesh.rotation,
+                translate: mesh.position,
+                color: cubeColor,
+              });
             });
           });
         });
-
-        // SIDE EFFECTS !!!!!!!!
-        // meshes.forEach((mesh) => {
-        //   globalScope(() => {
-        //     // Why do they go in this order
-        //     // I guess it just sets the shaders -.-
-        //     drawSimple(() => {
-        //       // the params here kind equal props I think?
-        //       drawMesh({
-        //         mesh: cubeMesh,
-        //         scale: [2.0, 2.0, 2.0],
-        //         translate: [0.0, 0.0, 0.0],
-        //         color: cubeColor,
-        //       });
-        //     });
-        //   });
-        // });
       };
     });
 
