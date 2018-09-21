@@ -9,23 +9,14 @@ import { getGeometry } from '../Geometries';
 import { createTransformMatrix } from '../Utils/MatrixHelpers';
 import { createRenderState, createMeshDraw, createSimpleDraw } from '../Utils/DrawHelpers';
 
-// This should be configured in the children somehow
+// WTF IS THIS SHIT???
+// This needs to be configured from the JSON and set by what the camera stream is
 const viewMat = new Float32Array([
   1, -0, 0, 0,
   0, 0.876966655254364, 0.48055124282836914, 0,
   -0, -0.48055124282836914, 0.876966655254364, 0,
   0, 0, -11.622776985168457, 1,
 ]);
-const projMat = new Float32Array(16);
-
-// I think my projection mat was effed up
-mat4.perspective(
-  projMat,
-  Math.PI / 4,
-  400 / 400,
-  0.01,
-  1000
-);
 
 function processMesh(props) {
   return {
@@ -35,13 +26,25 @@ function processMesh(props) {
   };
 }
 
-function view(id) {
+function view(id, width, height, style) {
   // Later replace id with css
-  return xs.of(canvas(`${id}.scene`, { attrs: { width: 400, height: 400 } }));
+  return xs.of(canvas(`${id}.scene`, { style, attrs: { width, height } }));
 }
 
 function ReglScene(sources) {
   const { DOM, frame$, props } = sources;
+
+  // I guess we need to init the projection matrix here
+  // I wish there were a better way to do this,
+  // but this is the only way I know how to calc the projection mat
+  const projMatrix = new Float32Array(16);
+  mat4.perspective(
+    projMatrix,
+    Math.PI / 4,
+    props.width / props.height,
+    0.01,
+    1000
+  );
 
   // should this just hold initial values or change with updates?
   const meshes$ = DOM.select('.scene').elements()
@@ -50,13 +53,15 @@ function ReglScene(sources) {
 
   // Create a reusable regl context
   const regl$ = DOM.select('.scene').elements().map(([e]) => REGL(e));
+  // Use the interactions from the
 
   // Combine meshes$ with state$?
   const render$ = meshes$.compose(sampleCombine(regl$))
     .map(([meshes, regl]) => {
+      // regl.destroy() when done to save cleanup
       // these could probably be created in another stream to be combined with
       // the state so the functions don't need to change
-      const globalScope = createRenderState(regl, viewMat, projMat);
+      const globalScope = createRenderState(regl, viewMat, projMatrix);
       const drawSimple = createSimpleDraw(regl);
       // could the mesh be props?
       const drawMesh = createMeshDraw(regl);
@@ -67,7 +72,6 @@ function ReglScene(sources) {
           depth: 1,
           color: [0, 0, 0, 1],
         });
-        const cubeColor = [0, 0, 0.6];
 
         // SIDE EFFECTS !!!!!!!!
         meshes.forEach((mesh) => {
@@ -81,7 +85,7 @@ function ReglScene(sources) {
                 scale: mesh.scale,
                 rotate: mesh.rotation,
                 translate: mesh.position,
-                color: cubeColor,
+                color: mesh.color,
               });
             });
           });
@@ -91,6 +95,7 @@ function ReglScene(sources) {
 
   // Render stream, find a better place for this
   // create an initial state so this renders properly
+  // Should also combine the state stream here
   frame$.compose(sampleCombine(render$))
     .subscribe({
       next: ([_, render]) => {
@@ -101,7 +106,7 @@ function ReglScene(sources) {
 
   // sinks
   return {
-    DOM: view(props.id),
+    DOM: view(props.id, props.width, props.height, props.style),
   };
 }
 
