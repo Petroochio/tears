@@ -16,7 +16,7 @@ export function createMeshDraw(reglCtx) {
     uniforms: {
       model: (_, props) => createTransformMatrix(props.translate, props.scale),
       ambientLightAmount: 0.3,
-      diffuseLightAmount: 0.7,
+      diffuseLightAmount: 0.9,
       color: reglCtx.prop('color'),
       isRound: false,
     },

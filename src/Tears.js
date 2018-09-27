@@ -7,7 +7,7 @@ import mat4 from 'gl-mat4';
 import { map, prop } from 'ramda';
 
 import ReglScene from './Components/ReglScene';
-
+import { importObj } from './Geometries/OBJLoader';
 import page1 from './Pages/TempPage';
 
 function view(children$) {
@@ -29,6 +29,7 @@ function main(sources) {
     // pass the children into the view
     DOM: view(pageDom$),
   };
+
   return sinks;
 }
 

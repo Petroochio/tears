@@ -11,33 +11,42 @@
  *   elements: [[0, 1, 2]], -> faces
  * }
  */
+import xs from 'xstream';
+
 import createCube from './Cube';
 import { CATEGORIES, PRIMITIVE_TYPES } from './GeometryTypes';
+import { importOBJ } from './OBJLoader';
 
 function getPrimitve(type, params) {
   // Switch, hash map?
   if (type === PRIMITIVE_TYPES.CUBE) {
-    createCube(...params);
+    return createCube(...params);
   }
+
+  return createCube(...params);
 }
 
+/**
+ * Returns an observable with a single item that contains the geometry
+ * @param {} options : { category, type, params }
+ */
 export function getGeometry(options) {
   const { category, type, params } = options;
-  if (category === CATEGORIES.PRIMITIVES) {
-    return getPrimitve(type, params);
+  if (category === CATEGORIES.PRIMITIVE) {
+    return xs.of(getPrimitve(type, params));
+  } else if (category === CATEGORIES.FILE) {
+    return xs.fromPromise(importOBJ(params));
   }
 
   return createCube();
 }
 
 export default {
-  getGeometry,
-
   primitives: {
     createCube,
   },
 
   importers: {
-    importOBJ: () => ':p',
+    importOBJ,
   },
 };

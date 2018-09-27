@@ -26,7 +26,7 @@ export default {
           },
           // This will get messy quick
           interaction: {
-            type: 'HOVER-COLOR',
+            types: ['POINTER-HOVER', 'POINTER-CLICK'],
             color: [[0.6, 0, 0], [0, 0, 0.6]],
           },
           position: [0, 0, 0],
@@ -103,18 +103,19 @@ export default {
         {
           // I wonder if there is a better way to do this?
           geometry: {
-            category: 'PRIMITIVE',
-            type: 'CUBE',
-            params: [],
+            category: 'FILE',
+            type: 'OBJ',
+            params: ['./Assets/Models/gourd.obj'],
           },
           // This will get messy quick
+          // is this always raycast?
           interaction: {
             type: 'HOVER-COLOR',
             color: [[0.6, 0, 0], [0, 0, 0.6]],
           },
-          position: [0.2, 0, 0],
+          position: [0, 0, 0],
           rotation: [0, 0, 0],
-          scale: [5, 2, 2],
+          scale: [1, 1, 1],
           color: [0.8, 0.6, 0],
         },
       ],

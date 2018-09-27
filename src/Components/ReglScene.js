@@ -19,11 +19,11 @@ const viewMat = new Float32Array([
 ]);
 
 function processMesh(props) {
-  return {
+  return getGeometry(props.geometry).map(geometry => ({
     ...props,
-    geometry: getGeometry(props.geometry),
+    geometry,
     matrix: createTransformMatrix(props.position, props.scale),
-  };
+  }));
 }
 
 function view(id, width, height, style) {
@@ -46,17 +46,16 @@ function ReglScene(sources) {
     1000
   );
 
-  // should this just hold initial values or change with updates?
-  const meshes$ = DOM.select('.scene').elements()
-    .mapTo(props.objects)
-    .map(map(processMesh));
+  // Sloppy
+  const meshes$ = props.objects.length > 1 ? xs.combine(...props.objects.map(processMesh)) :
+    processMesh(props.objects[0]).map(obj => [obj]);
 
   // Create a reusable regl context
   const regl$ = DOM.select('.scene').elements().map(([e]) => REGL(e));
   // Use the interactions from the
 
   // Combine meshes$ with state$?
-  const render$ = meshes$.compose(sampleCombine(regl$))
+  const render$ = xs.combine(meshes$, regl$)
     .map(([meshes, regl]) => {
       // regl.destroy() when done to save cleanup
       // these could probably be created in another stream to be combined with
@@ -104,7 +103,6 @@ function ReglScene(sources) {
       },
     });
 
-  // sinks
   return {
     DOM: view(props.id, props.width, props.height, props.style),
   };
